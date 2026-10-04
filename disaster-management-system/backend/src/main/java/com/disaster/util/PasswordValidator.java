@@ -5,7 +5,7 @@ import java.util.Set;
 public class PasswordValidator {
 
     private static final Set<String> COMMON_PASSWORDS = Set.of(
-            "12345678", "123456789", "1234567890", "password", "password123",
+            "87654321", "987654321", "0987654321", "password", "password123",
             "adminpassword", "qwerty123", "welcome123", "letmein123", "pass1234",
             "iloveyou", "monkey123", "dragon123", "master123", "sunshine"
     );
@@ -30,7 +30,7 @@ public class PasswordValidator {
             throw new IllegalArgumentException("Password must contain at least one special character (@, #, $, !, %, etc.).");
         }
         if (COMMON_PASSWORDS.contains(password.toLowerCase().trim())) {
-            throw new IllegalArgumentException("This password is too common (e.g. 12345678, password123). Please choose a stronger password.");
+            throw new IllegalArgumentException("This password is too common (e.g. password123). Please choose a stronger password.");
         }
     }
 }
