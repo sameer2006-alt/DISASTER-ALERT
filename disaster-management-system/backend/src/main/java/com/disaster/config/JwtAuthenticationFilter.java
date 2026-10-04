@@ -37,15 +37,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
-        if (jwtService.isTokenValid(token)) {
-            String username = jwtService.extractUsername(token);
-            String role = jwtService.extractRole(token);
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
-                var authToken = new UsernamePasswordAuthenticationToken(username, null, authorities);
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+        try {
+            if (jwtService.isTokenValid(token)) {
+                String username = jwtService.extractUsername(token);
+                String role = jwtService.extractRole(token);
+                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    String cleanRole = (role != null && role.startsWith("ROLE_")) ? role.substring(5) : role;
+                    var authorities = (cleanRole != null && !cleanRole.isBlank())
+                            ? List.of(new SimpleGrantedAuthority("ROLE_" + cleanRole))
+                            : List.<SimpleGrantedAuthority>of();
+                    var authToken = new UsernamePasswordAuthenticationToken(username, null, authorities);
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            } else {
+                SecurityContextHolder.clearContext();
             }
+        } catch (Exception e) {
+            SecurityContextHolder.clearContext();
         }
         filterChain.doFilter(request, response);
     }

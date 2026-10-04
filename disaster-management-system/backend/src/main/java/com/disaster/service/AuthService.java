@@ -88,13 +88,13 @@ public class AuthService {
 
     /** Second step registration — verify OTP and activate user in DB */
     public AuthResponse verifyRegisterOtp(String email, String otp) {
-        OtpVerification verification = otpService.verify(email, otp);
+        OtpVerification verification = otpService.verify(email, OtpVerification.OtpPurpose.USER_REGISTER, otp);
         if (verification.getPurpose() != OtpVerification.OtpPurpose.USER_REGISTER) {
-            throw new IllegalArgumentException("Invalid OTP purpose");
+            throw new IllegalArgumentException("Invalid or expired code");
         }
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired code"));
 
         user.setVerified(true);
         userRepository.save(user);

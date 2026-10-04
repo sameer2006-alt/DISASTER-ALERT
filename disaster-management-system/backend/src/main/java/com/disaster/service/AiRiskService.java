@@ -101,7 +101,7 @@ public class AiRiskService {
     private AiThreatAnalysis getMockData(double lat, double lng) {
         double confidence = 82 + (Math.random() * 15);
         double floodProb = 65 + (Math.random() * 30);
-        int population = (int) (100000 + Math.random() * 2000000);
+        int population = (int) (100_000 + Math.random() * (2_000 * 1_000));
         String urgency = floodProb > 85 ? "CRITICAL" : (floodProb > 70 ? "HIGH" : "MODERATE");
         double expansion = 10 + (Math.random() * 40);
 

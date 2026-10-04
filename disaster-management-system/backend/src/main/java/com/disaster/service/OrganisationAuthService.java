@@ -79,13 +79,13 @@ public class OrganisationAuthService {
 
     /** Second step organisation registration — verify OTP and activate organisation */
     public AuthResponse verifyRegisterOtp(String email, String otp) {
-        OtpVerification verification = otpService.verify(email, otp);
+        OtpVerification verification = otpService.verify(email, OtpVerification.OtpPurpose.ORG_REGISTER, otp);
         if (verification.getPurpose() != OtpVerification.OtpPurpose.ORG_REGISTER) {
-            throw new IllegalArgumentException("Invalid OTP purpose");
+            throw new IllegalArgumentException("Invalid or expired code");
         }
 
         Organisation org = organisationRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Organisation not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired code"));
 
         org.setVerified(true);
         organisationRepository.save(org);

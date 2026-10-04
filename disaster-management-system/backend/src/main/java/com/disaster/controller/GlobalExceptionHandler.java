@@ -15,6 +15,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleTooManyRequests(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", ex.getMessage()));
+    }
+
     @ExceptionHandler(com.disaster.exception.ConflictException.class)
     public ResponseEntity<Map<String, String>> handleConflict(com.disaster.exception.ConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

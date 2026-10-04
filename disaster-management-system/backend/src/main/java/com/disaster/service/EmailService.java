@@ -41,17 +41,25 @@ public class EmailService {
     @Value("${app.mail.provider:auto}")
     private String mailProvider;
 
+    @Value("${spring.profiles.active:}")
+    private String activeProfiles;
+
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
+    }
+
+    private boolean isDevProfile() {
+        return activeProfiles != null && java.util.Arrays.asList(activeProfiles.split(",")).contains("dev");
     }
 
     /**
      * OTP must be synchronous so registration fails loudly if email cannot be sent.
      */
     public void sendOtpEmail(String to, String otp) throws EmailDeliveryException {
-        log.info("════════════════════════════════════════════════════════════");
-        log.info("🔑 [OTP GENERATED] Email: {} | CODE: {} (Valid 5 mins)", to, otp);
-        log.info("════════════════════════════════════════════════════════════");
+        log.info("Sending OTP verification email to {}", to);
+        if (isDevProfile()) {
+            log.debug("🔑 [DEV ONLY] [OTP GENERATED] Email: {} | CODE: {} (Valid 5 mins)", to, otp);
+        }
 
         String subject = otp + " is your verification code - Smart Disaster Alert";
         String html = """

@@ -23,11 +23,18 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CorsConfigurationSource corsConfigurationSource;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                          CorsConfigurationSource corsConfigurationSource) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            CorsConfigurationSource corsConfigurationSource,
+            CustomAuthenticationEntryPoint authenticationEntryPoint,
+            CustomAccessDeniedHandler accessDeniedHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.corsConfigurationSource = corsConfigurationSource;
+        this.authenticationEntryPoint = authenticationEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
     }
 
     @Bean
@@ -36,63 +43,86 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
+                )
                 .authorizeHttpRequests(auth -> auth
 
-        // ── OPTIONS preflight — always allow ──────────────────────────
-        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+        // ═════════════════════════════════════════════════════════════════════
+        //  SECURITY ACCESS MATRIX (Order: most specific to least specific)
+        // ═════════════════════════════════════════════════════════════════════
 
-        // ── WebSocket ─────────────────────────────────────────────────
+        // ── 0. Infrastructure & Preflight ─────────────────────────────────────
+        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
         .requestMatchers("/ws/**", "/ws/info/**").permitAll()
 
-        // ── Citizen Auth ──────────────────────────────────────────────
-        .requestMatchers("/api/auth/**").permitAll()
+        // ── 1. Public GET ─────────────────────────────────────────────────────
+        // Health
+        .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
+        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+        // Organisation public cards
+        .requestMatchers(HttpMethod.GET, "/api/public/organisations").permitAll()
+        .requestMatchers(HttpMethod.GET, "/api/org/public/**").permitAll()
+        // Public stats, alerts, events, shelters
+        .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+        .requestMatchers(HttpMethod.GET, "/api/events/active").permitAll()
+        .requestMatchers(HttpMethod.GET, "/api/events/{id}").permitAll()
+        .requestMatchers(HttpMethod.GET, "/api/events").permitAll()
+        .requestMatchers(HttpMethod.GET, "/api/shelters/public/**").permitAll()
+        .requestMatchers(HttpMethod.GET, "/api/shelters").permitAll()
+        // SACHET feed
+        .requestMatchers(HttpMethod.GET, "/api/sachet/**").permitAll()
+        // Active simulation feed
+        .requestMatchers(HttpMethod.GET, "/api/simulate/active").permitAll()
 
-        // ── Organisation Auth ─────────────────────────────────────────
-        .requestMatchers("/api/org/auth/**").permitAll()
-        .requestMatchers("/api/org/register").permitAll()
-        .requestMatchers("/api/org/login").permitAll()
-        .requestMatchers("/api/org/verify-otp").permitAll()
-        .requestMatchers("/api/org/resend-otp").permitAll()
-
-        // ── Organisation Public (homepage + map) ──────────────────────
-        .requestMatchers("/api/org/public/**").permitAll()
-
-        // ── Shelter Public (map display) ──────────────────────────────
-        .requestMatchers("/api/shelters/public/**").permitAll()
-        .requestMatchers("/api/volunteers/**").permitAll()
-
-        // ── Disaster Public (map markers + UptimeRobot) ───────────────
-        .requestMatchers("/api/disasters/**").permitAll()
-        .requestMatchers("/api/simulate/active").permitAll()
-
-        // ── Rescue Public ─────────────────────────────────────────────
+        // ── 2. Public POST ────────────────────────────────────────────────────
+        // Citizen auth endpoints
+        .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
+        // Organisation auth endpoints
+        .requestMatchers(HttpMethod.POST, "/api/org/auth/**").permitAll()
+        .requestMatchers(HttpMethod.POST, "/api/org/register").permitAll()
+        .requestMatchers(HttpMethod.POST, "/api/org/login").permitAll()
+        .requestMatchers(HttpMethod.POST, "/api/org/verify-otp").permitAll()
+        .requestMatchers(HttpMethod.POST, "/api/org/resend-otp").permitAll()
+        // SOS Emergency Rescue Request
         .requestMatchers(HttpMethod.POST, "/api/rescue/request").permitAll()
-        .requestMatchers("/api/rescue/nearby").permitAll()
 
-        // ── Public / Integrations / AI / Verification ───────────────
-        .requestMatchers("/api/public/**").permitAll()
-        .requestMatchers("/api/integrations/**").permitAll()
-        .requestMatchers("/api/ai/**").permitAll()
-        .requestMatchers("/api/verification/**").permitAll()
+        // ── 3. ADMIN only ─────────────────────────────────────────────────────
+        // Disaster simulations & lifecycle resolution
+        .requestMatchers(HttpMethod.POST, "/api/simulate/**").hasRole("ADMIN")
+        .requestMatchers(HttpMethod.PATCH, "/api/simulate/**").hasRole("ADMIN")
+        .requestMatchers(HttpMethod.POST, "/api/events/simulate").hasRole("ADMIN")
+        .requestMatchers(HttpMethod.POST, "/api/events/ingest").hasRole("ADMIN")
+        // Verification pipeline simulation & reset
+        .requestMatchers(HttpMethod.POST, "/api/verification/simulate/**").hasRole("ADMIN")
+        .requestMatchers(HttpMethod.POST, "/api/verification/reset").hasRole("ADMIN")
+        // External integrations (NASA FIRMS, OpenWeather, Twilio, Email test/status)
+        .requestMatchers("/api/integrations/**").hasRole("ADMIN")
 
-        // ── Health check for UptimeRobot — NO method restriction ──────
-        .requestMatchers("/api/health").permitAll()
-        .requestMatchers("/actuator/health").permitAll()
+        // ── 4. ORGANISATION or ADMIN ──────────────────────────────────────────
+        // Rescue triage and status updates
+        .requestMatchers(HttpMethod.GET, "/api/rescue").hasAnyRole("ORGANISATION", "ADMIN")
+        .requestMatchers(HttpMethod.GET, "/api/rescue/pending").hasAnyRole("ORGANISATION", "ADMIN")
+        .requestMatchers(HttpMethod.PATCH, "/api/rescue/*/status").hasAnyRole("ORGANISATION", "ADMIN")
+        .requestMatchers(HttpMethod.PATCH, "/api/rescue/{id}/status").hasAnyRole("ORGANISATION", "ADMIN")
+        .requestMatchers(HttpMethod.GET, "/api/rescue/**").hasAnyRole("ORGANISATION", "ADMIN")
+        // Shelter management (creation & capacity/occupancy updates)
+        .requestMatchers(HttpMethod.POST, "/api/shelters").hasAnyRole("ORGANISATION", "ADMIN")
+        .requestMatchers(HttpMethod.PATCH, "/api/shelters/**").hasAnyRole("ORGANISATION", "ADMIN")
+        // Volunteer roster & status updates
+        .requestMatchers("/api/volunteers/**").hasAnyRole("ORGANISATION", "ADMIN")
+        // Organisation profile management
+        .requestMatchers("/api/org/profile").hasAnyRole("ORGANISATION", "ADMIN")
 
-        // ── Internal service-to-service ingest (Python NLP → Spring Boot) ─
-        .requestMatchers(HttpMethod.POST, "/api/events/ingest").permitAll()
-
-
-        // ── Simulation — any logged-in user ───────────────────────────
-        .requestMatchers("/api/events/simulate").authenticated()
-        .requestMatchers(HttpMethod.POST, "/api/simulate/**").authenticated()
-
-        // ── Climate — authenticated ───────────────────────────────────
+        // ── 5. Authenticated (CITIZEN, ORGANISATION, ADMIN) ───────────────────
         .requestMatchers("/api/climate/**").authenticated()
+        .requestMatchers("/api/ai/**").authenticated()
+        .requestMatchers("/api/verification/**").authenticated()
 
-        // ── Everything else requires auth ─────────────────────────────
+        // ── 6. Default Deny / Authenticated ───────────────────────────────────
         .anyRequest().authenticated()
-)
+                )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
