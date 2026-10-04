@@ -53,7 +53,11 @@ public class VerificationPipelineService {
     public void init() {
         if (verificationEventRepository.count() == 0) {
             log.info("Seeding initial verification pipeline demonstration events...");
-            seedBaselineScenarios();
+            try {
+                seedBaselineScenarios();
+            } catch (Exception e) {
+                log.warn("Failed to seed initial verification pipeline baseline scenarios: {}", e.getMessage());
+            }
         }
     }
 

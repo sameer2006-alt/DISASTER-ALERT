@@ -20,7 +20,7 @@ logger = logging.getLogger("sachet_poller")
 DEFAULT_POLL_INTERVAL = int(os.getenv("SACHET_POLL_INTERVAL_SECONDS", "300"))
 MAX_STORED_ALERTS = int(os.getenv("SACHET_MAX_STORED_ALERTS", "500"))
 SACHET_ENABLED = os.getenv("SACHET_ENABLED", "true").lower() in ("true", "1", "yes")
-SPRING_BOOT_INGEST_URL = os.getenv("BACKEND_INGEST_URL", "http://localhost:8081/api/events/ingest")
+SPRING_BOOT_INGEST_URL = os.getenv("BACKEND_INGEST_URL", "http://localhost:8080/api/events/ingest")
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/disaster_db")
 
 

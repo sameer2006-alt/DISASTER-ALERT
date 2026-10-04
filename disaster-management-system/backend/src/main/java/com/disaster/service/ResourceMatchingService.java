@@ -31,6 +31,10 @@ public class ResourceMatchingService {
     }
 
     public List<Organisation> findNearestOrganisations(DisasterEvent event, int limit) {
+        if (organisationRepository.count() == 0) {
+            return List.of();
+        }
+
         List<String> requiredTypes = supportTypesFor(event.getDisasterType());
         Point point = new Point(event.getLongitude(), event.getLatitude());
         double radiusKm = Math.max(event.getAffectedRadius(), 50);
@@ -38,10 +42,18 @@ public class ResourceMatchingService {
                 .maxDistance(new Distance(radiusKm, Metrics.KILOMETERS))
                 .query(Query.query(Criteria.where("activeStatus").is(true).and("verified").is(true)));
 
-        GeoResults<Organisation> geoResults = mongoTemplate.geoNear(nearQuery, Organisation.class);
-        List<Organisation> nearby = geoResults.getContent().stream()
-                .map(GeoResult::getContent)
-                .toList();
+        List<Organisation> nearby;
+        try {
+            GeoResults<Organisation> geoResults = mongoTemplate.geoNear(nearQuery, Organisation.class);
+            if (geoResults == null || geoResults.getContent().isEmpty()) {
+                return List.of();
+            }
+            nearby = geoResults.getContent().stream()
+                    .map(GeoResult::getContent)
+                    .toList();
+        } catch (Exception e) {
+            return List.of();
+        }
 
         return nearby.stream()
                 .filter(o -> o.getSupportTypes() != null && o.getSupportTypes().stream().anyMatch(requiredTypes::contains))
