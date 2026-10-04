@@ -129,7 +129,6 @@ export default function Login() {
           <h1 className="text-2xl font-bold text-headline">Login</h1>
           <input name="username" placeholder="Username" className={inputClass} required />
           <input name="password" type="password" placeholder="Password" className={inputClass} required />
-          <p className="text-body text-xs">Demo admin: admin / admin123</p>
           {error && <p className="text-neon-red text-sm">{error}</p>}
           <button type="submit" disabled={loading} className="w-full py-3 rounded-xl bg-accent-blue font-medium disabled:opacity-50">
             {loading ? 'Logging in...' : 'Login'}

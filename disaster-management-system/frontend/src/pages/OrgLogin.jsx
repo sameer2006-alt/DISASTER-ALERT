@@ -129,7 +129,6 @@ export default function OrgLogin() {
       <div className="pt-24 pb-16 px-4 flex justify-center">
         <form onSubmit={handleSubmit} className="glass max-w-md w-full rounded-2xl p-8 space-y-4">
           <h1 className="text-2xl font-bold text-headline">Organisation Login</h1>
-          <p className="text-body text-xs">Demo: relief@demo.org / org123</p>
           <input name="email" type="email" placeholder="Official Email" className={inputClass} required />
           <input name="password" type="password" placeholder="Password" className={inputClass} required />
           {error && <p className="text-neon-red text-sm">{error}</p>}

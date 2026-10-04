@@ -23,25 +23,30 @@ Or use MongoDB Atlas and set `MONGODB_URI`.
 ```bash
 cd backend
 export MONGODB_URI=mongodb://localhost:27017/disaster_db
-export JWT_SECRET=disaster-platform-super-secret-key-change-in-production-min-32-chars
+# Generate cryptographically secure JWT_SECRET via scripts/gen-secrets.ps1 or scripts/gen-secrets.sh
+export JWT_SECRET=<generated-secret-min-32-chars>
+export SPRING_PROFILES_ACTIVE=dev
+# Optional: customize dev passwords (randomly generated and logged if omitted)
+# export DEV_ADMIN_PASSWORD=...
+# export DEV_USER_PASSWORD=...
+# export DEV_ORG_PASSWORD=...
 # Optional for real emails:
-# export GMAIL_USER=you@gmail.com
-# export GMAIL_APP_PASSWORD=xxxx
+# export MAIL_USERNAME=...
+# export MAIL_PASSWORD=...
 mvn spring-boot:run
 ```
 
 API: http://localhost:8080
 
-**Demo accounts (auto-seeded):**
-- Admin: `admin` / `admin123`
-- Organisation: `relief@demo.org` / `org123`
+**Demo accounts (seeded only when `SPRING_PROFILES_ACTIVE=dev`):**
+- Admin: `admin` / `${DEV_ADMIN_PASSWORD}` (check logs on boot if not set)
+- Organisation: `relief@example.org` / `${DEV_ORG_PASSWORD}` (check logs on boot if not set)
 
 ### 3. Frontend
 
 ```bash
 cd frontend
 cp .env.example .env
-# Add VITE_MAPBOX_TOKEN from https://account.mapbox.com/
 npm install
 npm run dev
 ```
@@ -52,7 +57,7 @@ App: http://localhost:5173
 
 ```bash
 cp .env.example .env
-# Add GMAIL_* if you want real OTP emails
+# Set secrets generated via scripts/gen-secrets.ps1 or scripts/gen-secrets.sh
 docker compose up --build
 ```
 
@@ -62,10 +67,10 @@ docker compose up --build
 ## Hackathon Demo Flow
 
 1. Open landing → scroll Earth cinematic sequence
-2. Login as `admin` / `admin123` → Dashboard
+2. Login as `admin` (using configured or generated dev admin password) → Dashboard
 3. Click **Simulate FLOOD** → alerts, shelters activate, WebSocket updates
-4. Open org login `relief@demo.org` / `org123` → see rescue requests
-5. Citizen signup with OTP (requires Gmail env) or use admin flow
+4. Open org login `relief@example.org` (using configured or generated dev org password) → see rescue requests
+5. Citizen signup with OTP (requires mail credentials) or use admin flow
 
 ## Event-Driven Core
 

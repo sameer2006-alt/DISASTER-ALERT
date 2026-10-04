@@ -7,7 +7,7 @@ const COMMON_PASSWORDS = new Set([
   '1234567890',
   'password',
   'password123',
-  'admin123',
+  'adminpassword',
   'qwerty123',
   'welcome123',
   'letmein123',

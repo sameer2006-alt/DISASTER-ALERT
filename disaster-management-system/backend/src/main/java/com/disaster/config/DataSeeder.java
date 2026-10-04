@@ -2,17 +2,24 @@ package com.disaster.config;
 
 import com.disaster.model.*;
 import com.disaster.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.GeospatialIndex;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.List;
 
 @Component
+@Profile("dev")
 public class DataSeeder implements CommandLineRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
     private final UserRepository userRepository;
     private final OrganisationRepository organisationRepository;
@@ -38,24 +45,48 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // Ensure 2dsphere indexes compile.
+        log.warn("===============================================================================");
+        log.warn("WARNING: Running with 'dev' Spring profile active! Mock seeding is enabled.");
+        log.warn("DO NOT RUN WITH THE 'dev' PROFILE IN PRODUCTION ENVIRONMENTS!");
+        log.warn("===============================================================================");
+
+        // Resolve development seed passwords
+        String adminPassword = System.getenv("DEV_ADMIN_PASSWORD");
+        if (adminPassword == null || adminPassword.isBlank()) {
+            adminPassword = generateRandomPassword(16);
+            log.warn("DEV PROFILE: No DEV_ADMIN_PASSWORD set. Generated random admin password: {}", adminPassword);
+        }
+
+        String userPassword = System.getenv("DEV_USER_PASSWORD");
+        if (userPassword == null || userPassword.isBlank()) {
+            userPassword = generateRandomPassword(16);
+            log.warn("DEV PROFILE: No DEV_USER_PASSWORD set. Generated random user password: {}", userPassword);
+        }
+
+        String orgPassword = System.getenv("DEV_ORG_PASSWORD");
+        if (orgPassword == null || orgPassword.isBlank()) {
+            orgPassword = generateRandomPassword(16);
+            log.warn("DEV PROFILE: No DEV_ORG_PASSWORD set. Generated random org password: {}", orgPassword);
+        }
+
+        // Ensure 2dsphere indexes compile programmatically as runtime safety net
         try {
             mongoTemplate.indexOps(User.class).ensureIndex(new GeospatialIndex("geoLocation").typed(org.springframework.data.mongodb.core.index.GeoSpatialIndexType.GEO_2DSPHERE));
             mongoTemplate.indexOps(Shelter.class).ensureIndex(new GeospatialIndex("geoLocation").typed(org.springframework.data.mongodb.core.index.GeoSpatialIndexType.GEO_2DSPHERE));
             mongoTemplate.indexOps(Volunteer.class).ensureIndex(new GeospatialIndex("geoLocation").typed(org.springframework.data.mongodb.core.index.GeoSpatialIndexType.GEO_2DSPHERE));
             mongoTemplate.indexOps(Organisation.class).ensureIndex(new GeospatialIndex("geoLocation").typed(org.springframework.data.mongodb.core.index.GeoSpatialIndexType.GEO_2DSPHERE));
             mongoTemplate.indexOps(DisasterEvent.class).ensureIndex(new GeospatialIndex("geoLocation").typed(org.springframework.data.mongodb.core.index.GeoSpatialIndexType.GEO_2DSPHERE));
-            System.out.println("Programmatic 2dsphere index creation successful.");
+            log.info("Programmatic 2dsphere index verification successful.");
         } catch (Exception e) {
-            System.err.println("Could not create geospatial indexes programmatically: " + e.getMessage());
+            log.warn("Could not create geospatial indexes programmatically: {}", e.getMessage());
         }
 
         // 1. Seed Admin
         if (!userRepository.existsByUsername("admin")) {
             userRepository.save(User.builder()
                     .username("admin")
-                    .email("admin@disaster.local")
-                    .password(passwordEncoder.encode("admin123"))
+                    .email("admin@example.org")
+                    .password(passwordEncoder.encode(adminPassword))
                     .location("HQ")
                     .state("Delhi")
                     .city("New Delhi")
@@ -69,11 +100,11 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         // 2. Seed Test Citizen Users inside Mumbai region to receive disaster email alerts
-        if (!userRepository.existsByEmail("gaurangchouhan316@gmail.com")) {
+        if (!userRepository.existsByEmail("citizen1@example.org")) {
             User citizen1 = User.builder()
-                    .username("gaurang")
-                    .email("gaurangchouhan316@gmail.com")
-                    .password(passwordEncoder.encode("user123"))
+                    .username("citizen1")
+                    .email("citizen1@example.org")
+                    .password(passwordEncoder.encode(userPassword))
                     .location("Mumbai Central")
                     .state("Maharashtra")
                     .city("Mumbai")
@@ -87,11 +118,11 @@ public class DataSeeder implements CommandLineRunner {
             userRepository.save(citizen1);
         }
 
-        if (!userRepository.existsByEmail("rathorenakul271@gmail.com")) {
+        if (!userRepository.existsByEmail("citizen2@example.org")) {
             User citizen2 = User.builder()
-                    .username("nakul")
-                    .email("rathorenakul271@gmail.com")
-                    .password(passwordEncoder.encode("user123"))
+                    .username("citizen2")
+                    .email("citizen2@example.org")
+                    .password(passwordEncoder.encode(userPassword))
                     .location("Bandra Waterfront")
                     .state("Maharashtra")
                     .city("Mumbai")
@@ -109,8 +140,8 @@ public class DataSeeder implements CommandLineRunner {
         if (organisationRepository.count() == 0) {
             Organisation ngo = Organisation.builder()
                     .organisationName("Rapid Relief NGO")
-                    .email("gaurangchouhan316@gmail.com")
-                    .password(passwordEncoder.encode("org123"))
+                    .email("relief@example.org")
+                    .password(passwordEncoder.encode(orgPassword))
                     .verified(true)
                     .activeStatus(true)
                     .country("India")
@@ -213,8 +244,8 @@ public class DataSeeder implements CommandLineRunner {
         if (volunteerRepository.count() == 0) {
             User volunteerUser = User.builder()
                     .username("mumbaivolunteer")
-                    .email("volunteer@disaster.local")
-                    .password(passwordEncoder.encode("user123"))
+                    .email("volunteer@example.org")
+                    .password(passwordEncoder.encode(userPassword))
                     .location("Kurla")
                     .state("Maharashtra")
                     .city("Mumbai")
@@ -237,5 +268,15 @@ public class DataSeeder implements CommandLineRunner {
             volunteer.syncGeo();
             volunteerRepository.save(volunteer);
         }
+    }
+
+    private String generateRandomPassword(int length) {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
     }
 }

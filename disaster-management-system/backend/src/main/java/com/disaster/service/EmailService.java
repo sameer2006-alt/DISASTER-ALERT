@@ -35,7 +35,7 @@ public class EmailService {
     @Value("${spring.mail.password:}")
     private String mailPassword;
 
-    @Value("${spring.mail.host:smtp.gmail.com}")
+    @Value("${spring.mail.host:smtp.example.org}")
     private String mailHost;
 
     @Value("${app.mail.provider:auto}")
@@ -172,22 +172,23 @@ public class EmailService {
 
         Exception lastError = null;
 
-        // Prioritize Gmail SMTP using the configured Google App Password
+        // Prioritize custom/configured SMTP using the configured App Password
         if (hasGmailCredentials()) {
+            String targetHost = (mailHost != null && !mailHost.isBlank()) ? mailHost : "smtp.example.org";
             try {
-                sendViaSmtp(to, subject, text, html, "smtp.gmail.com", senderEmail, getGmailPassword());
-                log.info("Email sent successfully via Gmail SMTP to {}", to);
+                sendViaSmtp(to, subject, text, html, targetHost, senderEmail, getGmailPassword());
+                log.info("Email sent successfully via SMTP to {}", to);
                 return;
             } catch (Exception e) {
                 lastError = e;
-                log.warn("Gmail SMTP primary attempt failed: {}. Retrying without spaces...", e.getMessage());
+                log.warn("SMTP primary attempt failed: {}. Retrying without spaces...", e.getMessage());
                 try {
-                    sendViaSmtp(to, subject, text, html, "smtp.gmail.com", senderEmail, getGmailPassword().replace(" ", ""));
-                    log.info("Email sent successfully via Gmail SMTP (no-spaces) to {}", to);
+                    sendViaSmtp(to, subject, text, html, targetHost, senderEmail, getGmailPassword().replace(" ", ""));
+                    log.info("Email sent successfully via SMTP (no-spaces) to {}", to);
                     return;
                 } catch (Exception e2) {
                     lastError = e2;
-                    log.error("Gmail SMTP retry also failed: {}", e2.getMessage());
+                    log.error("SMTP retry also failed: {}", e2.getMessage());
                 }
             }
         }

@@ -5,14 +5,14 @@
 - Highlight: realtime stats, organisation cards
 
 ## 2. Organisation (1 min)
-- Org Login: `relief@demo.org` / `org123`
+- Org Login: `relief@example.org` / `${DEV_ORG_PASSWORD}` (or password logged on dev boot)
 - Show rescue requests panel + shelter registration
 
 ## 3. Admin simulation (2 min)
-- Login: `admin` / `admin123`
+- Login: `admin` / `${DEV_ADMIN_PASSWORD}` (or password logged on dev boot)
 - Dashboard → **Simulate FLOOD**
 - Point out: live alert card, shelter ACTIVE status, map markers
-- Check backend logs for email (if Gmail configured)
+- Check backend logs for email (if SMTP configured)
 
 ## 4. Citizen flow (1 min)
 - Signup → OTP email → verify → dashboard

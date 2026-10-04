@@ -2,8 +2,8 @@ package com.disaster.config;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -16,11 +16,21 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    @Value("${app.jwt.secret}")
+    @Value("${app.jwt.secret:}")
     private String secret;
 
-    @Value("${app.jwt.expiration-ms}")
+    @Value("${app.jwt.expiration-ms:86400000}")
     private long expirationMs;
+
+    @PostConstruct
+    public void validateSecret() {
+        if (secret == null || secret.trim().getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException(
+                "CRITICAL SECURITY CONFIGURATION ERROR: JWT_SECRET environment variable is missing, blank, or shorter than 32 bytes (256 bits). " +
+                "Please configure a cryptographically secure JWT_SECRET of at least 32 characters in your environment."
+            );
+        }
+    }
 
     public String generateToken(String subject, Map<String, Object> claims) {
         Date now = new Date();
@@ -64,9 +74,7 @@ public class JwtService {
     }
 
     private SecretKey getSignKey() {
-        byte[] keyBytes = secret.length() >= 32
-                ? secret.getBytes(StandardCharsets.UTF_8)
-                : Decoders.BASE64.decode(secret);
-        return Keys.hmacShaKeyFor(keyBytes.length >= 32 ? keyBytes : secret.getBytes(StandardCharsets.UTF_8));
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 }
+

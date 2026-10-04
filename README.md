@@ -275,15 +275,15 @@ curl -X POST http://localhost:8080/api/simulate/flood \
 # MongoDB
 spring.data.mongodb.uri=mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/disaster_db
 
-# JWT
-jwt.secret=YOUR_64_CHARACTER_SECRET_KEY
+# JWT (generate using scripts/gen-secrets.ps1 or scripts/gen-secrets.sh)
+jwt.secret=YOUR_32_PLUS_CHARACTER_SECRET_KEY
 jwt.expiration=86400000
 
-# Gmail SMTP
-spring.mail.host=smtp.gmail.com
+# SMTP (Brevo recommended or custom SMTP)
+spring.mail.host=smtp-relay.brevo.com
 spring.mail.port=587
-spring.mail.username=yourgmail@gmail.com
-spring.mail.password=YOUR_16_CHAR_APP_PASSWORD
+spring.mail.username=your-user@example.org
+spring.mail.password=YOUR_SMTP_PASSWORD
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
 
@@ -291,7 +291,7 @@ spring.mail.properties.mail.smtp.starttls.enable=true
 app.cors.allowed-origins=http://localhost:5173,https://your-frontend.vercel.app
 ```
 
-> **Gmail App Password setup:** Go to myaccount.google.com/apppasswords → generate a 16-character password. Requires 2-Factor Authentication to be enabled.
+> **SMTP / App Password setup:** Configure your SMTP server host and credentials. For Brevo, use `smtp-relay.brevo.com` with your Brevo API key as the password. For Google Workspace/custom SMTP, generate an app-specific password.
 
 ### Frontend — `.env`
 

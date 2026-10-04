@@ -6,7 +6,7 @@ public class PasswordValidator {
 
     private static final Set<String> COMMON_PASSWORDS = Set.of(
             "12345678", "123456789", "1234567890", "password", "password123",
-            "admin123", "qwerty123", "welcome123", "letmein123", "pass1234",
+            "adminpassword", "qwerty123", "welcome123", "letmein123", "pass1234",
             "iloveyou", "monkey123", "dragon123", "master123", "sunshine"
     );
 
