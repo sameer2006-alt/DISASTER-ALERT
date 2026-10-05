@@ -64,7 +64,11 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    private <T> T extractClaim(String token, Function<Claims, T> resolver) {
+    public String extractOrgId(String token) {
+        return extractClaim(token, claims -> claims.get("orgId", String.class));
+    }
+
+    public <T> T extractClaim(String token, Function<Claims, T> resolver) {
         Claims claims = Jwts.parser()
                 .verifyWith(getSignKey())
                 .build()

@@ -1,5 +1,6 @@
 package com.disaster.controller;
 
+import com.disaster.dto.ShelterView;
 import com.disaster.model.Shelter;
 import com.disaster.repository.ShelterRepository;
 import org.springframework.http.ResponseEntity;
@@ -21,21 +22,22 @@ public class ShelterController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Shelter>> list() {
-        return ResponseEntity.ok(shelterRepository.findAll());
+    public ResponseEntity<List<ShelterView>> list() {
+        return ResponseEntity.ok(shelterRepository.findAll().stream().map(ShelterView::from).toList());
     }
 
     @PostMapping
-    public ResponseEntity<Shelter> create(@RequestBody Shelter shelter) {
+    public ResponseEntity<ShelterView> create(@RequestBody Shelter shelter) {
         shelter.syncGeo();
         if (shelter.getStatus() == null) shelter.setStatus(Shelter.ShelterStatus.INACTIVE);
         Shelter saved = shelterRepository.save(shelter);
-        messagingTemplate.convertAndSend("/topic/shelters", saved);
-        return ResponseEntity.ok(saved);
+        ShelterView view = ShelterView.from(saved);
+        messagingTemplate.convertAndSend("/topic/shelters", view);
+        return ResponseEntity.ok(view);
     }
 
     @PatchMapping("/{id}/occupancy")
-    public ResponseEntity<Shelter> updateOccupancy(@PathVariable String id, @RequestBody OccupancyUpdate update) {
+    public ResponseEntity<ShelterView> updateOccupancy(@PathVariable String id, @RequestBody OccupancyUpdate update) {
         Shelter shelter = shelterRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Shelter not found"));
         shelter.setAvailableBeds(update.availableBeds());
@@ -43,8 +45,9 @@ public class ShelterController {
             shelter.setStatus(Shelter.ShelterStatus.FULL);
         }
         Shelter saved = shelterRepository.save(shelter);
-        messagingTemplate.convertAndSend("/topic/shelters", saved);
-        return ResponseEntity.ok(saved);
+        ShelterView view = ShelterView.from(saved);
+        messagingTemplate.convertAndSend("/topic/shelters", view);
+        return ResponseEntity.ok(view);
     }
 
     public record OccupancyUpdate(int availableBeds) {}

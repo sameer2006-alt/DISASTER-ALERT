@@ -1,5 +1,6 @@
 package com.disaster.controller;
 
+import com.disaster.dto.RescueView;
 import com.disaster.model.RescueRequest;
 import com.disaster.repository.RescueRequestRepository;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +34,7 @@ public class RescueController {
     }
 
     @PostMapping("/request")
-    public ResponseEntity<RescueRequest> create(@RequestBody RescueRequest request) {
+    public ResponseEntity<RescueView> create(@RequestBody RescueRequest request) {
         if (request.getLatitude() == 0.0 || request.getLongitude() == 0.0) {
             throw new IllegalArgumentException("Location required for SOS");
         }
@@ -41,8 +42,9 @@ public class RescueController {
         request.setCreatedAt(Instant.now());
         request.syncGeo();
         RescueRequest saved = rescueRepository.save(request);
-        messagingTemplate.convertAndSend("/topic/rescue", saved);
-        messagingTemplate.convertAndSend("/topic/rescue-requests", saved);
+        RescueView view = RescueView.from(saved);
+        messagingTemplate.convertAndSend("/topic/rescue", view);
+        messagingTemplate.convertAndSend("/topic/rescue-requests", view);
 
         // Notify organisations near the SOS beacon's coordinates (within 50km)
         org.springframework.data.geo.Point point = new org.springframework.data.geo.Point(saved.getLongitude(), saved.getLatitude());
@@ -78,29 +80,30 @@ public class RescueController {
             emailService.sendSosAlertToAuthority(authorityEmail, saved);
         }
 
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(view);
     }
 
     @GetMapping
-    public ResponseEntity<List<RescueRequest>> list() {
-        return ResponseEntity.ok(rescueRepository.findAll());
+    public ResponseEntity<List<RescueView>> list() {
+        return ResponseEntity.ok(rescueRepository.findAll().stream().map(RescueView::from).toList());
     }
 
     @GetMapping("/pending")
-    public ResponseEntity<List<RescueRequest>> pending() {
-        return ResponseEntity.ok(rescueRepository.findByStatus(RescueRequest.RescueStatus.PENDING));
+    public ResponseEntity<List<RescueView>> pending() {
+        return ResponseEntity.ok(rescueRepository.findByStatus(RescueRequest.RescueStatus.PENDING).stream().map(RescueView::from).toList());
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<RescueRequest> updateStatus(
+    public ResponseEntity<RescueView> updateStatus(
             @PathVariable String id,
             @RequestBody StatusUpdate update) {
         RescueRequest req = rescueRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Request not found"));
         req.setStatus(update.status());
         RescueRequest saved = rescueRepository.save(req);
-        messagingTemplate.convertAndSend("/topic/rescue", saved);
-        return ResponseEntity.ok(saved);
+        RescueView view = RescueView.from(saved);
+        messagingTemplate.convertAndSend("/topic/rescue", view);
+        return ResponseEntity.ok(view);
     }
 
     public record StatusUpdate(RescueRequest.RescueStatus status) {}

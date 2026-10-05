@@ -1,6 +1,9 @@
 package com.disaster.service;
 
 import com.disaster.dto.AlertMessage;
+import com.disaster.dto.OrgPublicView;
+import com.disaster.dto.ShelterView;
+import com.disaster.dto.VolunteerView;
 import com.disaster.model.*;
 import com.disaster.repository.*;
 import org.slf4j.Logger;
@@ -101,7 +104,7 @@ public class EventProcessorService {
                 .forEach(s -> {
                     s.setStatus(Shelter.ShelterStatus.ACTIVE);
                     shelterRepository.save(s);
-                    messagingTemplate.convertAndSend("/topic/shelters", s);
+                    messagingTemplate.convertAndSend("/topic/shelters", ShelterView.from(s));
                 });
     }
 
@@ -112,7 +115,7 @@ public class EventProcessorService {
                     v.setStatus(Volunteer.VolunteerStatus.ON_MISSION);
                     v.setAssignedDisasterId(event.getId());
                     volunteerRepository.save(v);
-                    messagingTemplate.convertAndSend("/topic/volunteers", v);
+                    messagingTemplate.convertAndSend("/topic/volunteers", VolunteerView.from(v));
                 });
     }
 
@@ -133,7 +136,7 @@ public class EventProcessorService {
         List<Organisation> matched = matchingService.findNearestOrganisations(event, 10);
         matched.forEach(org -> {
             emailService.sendDisasterAlert(org.getEmail(), event, "Your team has been matched to this zone");
-            messagingTemplate.convertAndSend("/topic/org-status", org);
+            messagingTemplate.convertAndSend("/topic/org-status", OrgPublicView.from(org));
         });
     }
 

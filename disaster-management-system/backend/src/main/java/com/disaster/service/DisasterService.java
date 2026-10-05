@@ -1,6 +1,9 @@
 package com.disaster.service;
 
 import com.disaster.dto.AlertMessage;
+import com.disaster.dto.OrgPublicView;
+import com.disaster.dto.ShelterView;
+import com.disaster.dto.VolunteerView;
 import com.disaster.model.*;
 import com.disaster.repository.*;
 import org.slf4j.Logger;
@@ -88,7 +91,7 @@ public class DisasterService {
                 shelterRepository.save(shelter);
                 sheltersActivated++;
             }
-            messagingTemplate.convertAndSend("/topic/shelters", shelter);
+            messagingTemplate.convertAndSend("/topic/shelters", ShelterView.from(shelter));
         }
 
         // Get shelter fallback string
@@ -136,8 +139,9 @@ public class DisasterService {
             volunteer.setStatus(Volunteer.VolunteerStatus.ON_MISSION);
             volunteer.setAssignedDisasterId(savedEvent.getId());
             volunteerRepository.save(volunteer);
-            messagingTemplate.convertAndSend("/topic/volunteers", volunteer);
-            messagingTemplate.convertAndSend("/topic/rescue", volunteer);
+            VolunteerView vView = VolunteerView.from(volunteer);
+            messagingTemplate.convertAndSend("/topic/volunteers", vView);
+            messagingTemplate.convertAndSend("/topic/rescue", vView);
         }
 
         // 4. Match and notify organisations
@@ -145,8 +149,9 @@ public class DisasterService {
         List<String> requiredResources = matchingService.supportTypesFor(savedEvent.getDisasterType());
         for (Organisation org : organisations) {
             emailService.sendOrgDisasterAlert(org.getEmail(), savedEvent, requiredResources);
-            messagingTemplate.convertAndSend("/topic/org-status", org);
-            messagingTemplate.convertAndSend("/topic/rescue", org);
+            OrgPublicView orgView = OrgPublicView.from(org);
+            messagingTemplate.convertAndSend("/topic/org-status", orgView);
+            messagingTemplate.convertAndSend("/topic/rescue", orgView);
 
             // targeted org WS notification
             java.util.Map<String, Object> orgNotification = java.util.Map.of(
@@ -178,7 +183,7 @@ public class DisasterService {
         for (Shelter shelter : shelters) {
             shelter.setStatus(Shelter.ShelterStatus.INACTIVE);
             shelterRepository.save(shelter);
-            messagingTemplate.convertAndSend("/topic/shelters", shelter);
+            messagingTemplate.convertAndSend("/topic/shelters", ShelterView.from(shelter));
         }
 
         // Reset volunteers assigned to this event
@@ -189,8 +194,9 @@ public class DisasterService {
             volunteer.setStatus(Volunteer.VolunteerStatus.AVAILABLE);
             volunteer.setAssignedDisasterId(null);
             volunteerRepository.save(volunteer);
-            messagingTemplate.convertAndSend("/topic/volunteers", volunteer);
-            messagingTemplate.convertAndSend("/topic/rescue", volunteer);
+            VolunteerView vView = VolunteerView.from(volunteer);
+            messagingTemplate.convertAndSend("/topic/volunteers", vView);
+            messagingTemplate.convertAndSend("/topic/rescue", vView);
         }
 
         // Broadcast resolution alert

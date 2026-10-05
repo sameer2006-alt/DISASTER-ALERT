@@ -1,10 +1,12 @@
 package com.disaster.controller;
 
+import com.disaster.dto.DisasterIngestDto;
 import com.disaster.model.DisasterEvent;
 import com.disaster.model.DisasterType;
 import com.disaster.model.EventSource;
 import com.disaster.repository.DisasterEventRepository;
 import com.disaster.service.EventProcessorService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -54,9 +56,8 @@ public class EventController {
     }
 
     @PostMapping("/ingest")
-    public ResponseEntity<DisasterEvent> ingest(@RequestBody DisasterEvent event) {
-        if (event.getSource() == null) event.setSource(EventSource.MANUAL);
-        if (event.getTimestamp() == null) event.setTimestamp(java.time.Instant.now());
+    public ResponseEntity<DisasterEvent> ingest(@Valid @RequestBody DisasterIngestDto dto) {
+        DisasterEvent event = dto.toEntity();
         return ResponseEntity.ok(eventProcessor.processEvent(event));
     }
 

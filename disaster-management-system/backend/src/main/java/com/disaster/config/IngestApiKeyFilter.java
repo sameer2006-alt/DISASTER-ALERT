@@ -29,7 +29,7 @@ public class IngestApiKeyFilter extends OncePerRequestFilter {
 
     private final ObjectMapper objectMapper;
 
-    @Value("${app.ingest.api-key:}")
+    @Value("${app.ingest.api-key:${INGEST_API_KEY:}}")
     private String configuredApiKey;
 
     @org.springframework.beans.factory.annotation.Autowired

@@ -1,5 +1,7 @@
 package com.disaster.controller;
 
+import com.disaster.dto.VolunteerOrgView;
+import com.disaster.dto.VolunteerView;
 import com.disaster.model.Volunteer;
 import com.disaster.repository.VolunteerRepository;
 import org.springframework.http.ResponseEntity;
@@ -21,36 +23,39 @@ public class VolunteerController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Volunteer>> list() {
-        return ResponseEntity.ok(volunteerRepository.findAll());
+    public ResponseEntity<List<VolunteerOrgView>> list() {
+        return ResponseEntity.ok(volunteerRepository.findAll().stream().map(VolunteerOrgView::from).toList());
     }
 
     @PostMapping
-    public ResponseEntity<Volunteer> create(@RequestBody Volunteer volunteer) {
+    public ResponseEntity<VolunteerOrgView> create(@RequestBody Volunteer volunteer) {
         volunteer.syncGeo();
         if (volunteer.getStatus() == null) {
             volunteer.setStatus(Volunteer.VolunteerStatus.AVAILABLE);
         }
         Volunteer saved = volunteerRepository.save(volunteer);
+        VolunteerView publicView = VolunteerView.from(saved);
         try {
-            messagingTemplate.convertAndSend("/topic/volunteers", saved);
+            messagingTemplate.convertAndSend("/topic/volunteers", publicView);
         } catch (Exception ignored) {}
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(VolunteerOrgView.from(saved));
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<Volunteer> updateStatus(@PathVariable String id, @RequestBody StatusUpdate update) {
+    public ResponseEntity<VolunteerOrgView> updateStatus(@PathVariable String id, @RequestBody StatusUpdate update) {
         Volunteer volunteer = volunteerRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Volunteer not found"));
         if (update.status() != null) {
             volunteer.setStatus(update.status());
         }
         Volunteer saved = volunteerRepository.save(volunteer);
+        VolunteerView publicView = VolunteerView.from(saved);
         try {
-            messagingTemplate.convertAndSend("/topic/volunteers", saved);
+            messagingTemplate.convertAndSend("/topic/volunteers", publicView);
         } catch (Exception ignored) {}
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(VolunteerOrgView.from(saved));
     }
 
     public record StatusUpdate(Volunteer.VolunteerStatus status) {}
 }
+

@@ -74,7 +74,7 @@ public class PublicController {
     }
 
     @GetMapping("/shelters")
-    public ResponseEntity<List<Shelter>> publicShelters() {
-        return ResponseEntity.ok(shelterRepository.findAll());
+    public ResponseEntity<List<com.disaster.dto.ShelterView>> publicShelters() {
+        return ResponseEntity.ok(shelterRepository.findAll().stream().map(com.disaster.dto.ShelterView::from).toList());
     }
 }

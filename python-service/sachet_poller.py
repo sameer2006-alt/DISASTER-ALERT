@@ -21,6 +21,7 @@ DEFAULT_POLL_INTERVAL = int(os.getenv("SACHET_POLL_INTERVAL_SECONDS", "300"))
 MAX_STORED_ALERTS = int(os.getenv("SACHET_MAX_STORED_ALERTS", "500"))
 SACHET_ENABLED = os.getenv("SACHET_ENABLED", "true").lower() in ("true", "1", "yes")
 SPRING_BOOT_INGEST_URL = os.getenv("BACKEND_INGEST_URL", "http://localhost:8080/api/events/ingest")
+INGEST_API_KEY = os.getenv("INGEST_API_KEY", "")
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/disaster_db")
 
 
@@ -104,11 +105,14 @@ class SachetPollerService:
         Forward event to Spring Boot backend ingest endpoint.
         Spring Boot saves to MongoDB and converts/sends to WebSocket /topic/alerts & /topic/dashboard.
         """
+        headers = {"Content-Type": "application/json"}
+        if INGEST_API_KEY:
+            headers["X-Ingest-Key"] = INGEST_API_KEY
         try:
             res = requests.post(
                 SPRING_BOOT_INGEST_URL,
                 json=event,
-                headers={"Content-Type": "application/json"},
+                headers=headers,
                 timeout=3
             )
             if res.status_code in (200, 201):

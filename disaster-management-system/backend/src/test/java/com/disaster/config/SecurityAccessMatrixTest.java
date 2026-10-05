@@ -29,14 +29,20 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(classes = {
-        SecurityAccessMatrixTest.TestConfig.class,
-        SecurityConfig.class,
-        CorsConfig.class,
-        CustomAuthenticationEntryPoint.class,
-        CustomAccessDeniedHandler.class,
-        JwtAuthenticationFilter.class
-})
+@SpringBootTest(
+        classes = {
+                SecurityAccessMatrixTest.TestConfig.class,
+                SecurityConfig.class,
+                CorsConfig.class,
+                CustomAuthenticationEntryPoint.class,
+                CustomAccessDeniedHandler.class,
+                JwtAuthenticationFilter.class,
+                IngestApiKeyFilter.class
+        },
+        properties = {
+                "app.ingest.api-key=test-ingest-api-key-for-security-matrix"
+        }
+)
 @AutoConfigureMockMvc
 class SecurityAccessMatrixTest {
 
@@ -69,6 +75,11 @@ class SecurityAccessMatrixTest {
         @PostMapping("/api/rescue/request")
         public Map<String, String> rescueRequest() {
             return Map.of("status", "SOS_ACCEPTED");
+        }
+
+        @PostMapping("/api/events/ingest")
+        public Map<String, String> eventsIngest() {
+            return Map.of("status", "INGEST_OK");
         }
 
         @PostMapping("/api/simulate/flood")
@@ -187,6 +198,50 @@ class SecurityAccessMatrixTest {
                             .content("{}"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("SOS_ACCEPTED"));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Row 2b: Ingest Endpoint (Guarded by IngestApiKeyFilter / X-Ingest-Key)
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("Row 2b: Ingest Endpoint (guarded by X-Ingest-Key)")
+    class IngestEndpointSecurityTests {
+
+        @Test
+        @DisplayName("POST /api/events/ingest with no header returns 401 JSON")
+        void ingestWithoutHeaderReturns401() throws Exception {
+            mockMvc.perform(post("/api/events/ingest")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.error").value("Unauthorized"))
+                    .andExpect(jsonPath("$.message").value("Invalid or missing X-Ingest-Key header"));
+        }
+
+        @Test
+        @DisplayName("POST /api/events/ingest with wrong header returns 401 JSON")
+        void ingestWithWrongHeaderReturns401() throws Exception {
+            mockMvc.perform(post("/api/events/ingest")
+                            .header("X-Ingest-Key", "invalid-key")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.error").value("Unauthorized"))
+                    .andExpect(jsonPath("$.message").value("Invalid or missing X-Ingest-Key header"));
+        }
+
+        @Test
+        @DisplayName("POST /api/events/ingest with valid X-Ingest-Key header returns 200 OK")
+        void ingestWithValidHeaderReturns200() throws Exception {
+            mockMvc.perform(post("/api/events/ingest")
+                            .header("X-Ingest-Key", "test-ingest-api-key-for-security-matrix")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("INGEST_OK"));
         }
     }
 

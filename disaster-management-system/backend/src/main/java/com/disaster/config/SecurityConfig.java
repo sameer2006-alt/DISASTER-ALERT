@@ -13,6 +13,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -22,16 +23,19 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final IngestApiKeyFilter ingestApiKeyFilter;
     private final CorsConfigurationSource corsConfigurationSource;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
+            IngestApiKeyFilter ingestApiKeyFilter,
             CorsConfigurationSource corsConfigurationSource,
             CustomAuthenticationEntryPoint authenticationEntryPoint,
             CustomAccessDeniedHandler accessDeniedHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.ingestApiKeyFilter = ingestApiKeyFilter;
         this.corsConfigurationSource = corsConfigurationSource;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
@@ -87,13 +91,14 @@ public class SecurityConfig {
         .requestMatchers(HttpMethod.POST, "/api/org/resend-otp").permitAll()
         // SOS Emergency Rescue Request
         .requestMatchers(HttpMethod.POST, "/api/rescue/request").permitAll()
+        // Internal event ingestion (guarded by IngestApiKeyFilter via X-Ingest-Key header)
+        .requestMatchers(HttpMethod.POST, "/api/events/ingest").permitAll()
 
         // ── 3. ADMIN only ─────────────────────────────────────────────────────
         // Disaster simulations & lifecycle resolution
         .requestMatchers(HttpMethod.POST, "/api/simulate/**").hasRole("ADMIN")
         .requestMatchers(HttpMethod.PATCH, "/api/simulate/**").hasRole("ADMIN")
         .requestMatchers(HttpMethod.POST, "/api/events/simulate").hasRole("ADMIN")
-        .requestMatchers(HttpMethod.POST, "/api/events/ingest").hasRole("ADMIN")
         // Verification pipeline simulation & reset
         .requestMatchers(HttpMethod.POST, "/api/verification/simulate/**").hasRole("ADMIN")
         .requestMatchers(HttpMethod.POST, "/api/verification/reset").hasRole("ADMIN")
@@ -123,7 +128,8 @@ public class SecurityConfig {
         // ── 6. Default Deny / Authenticated ───────────────────────────────────
         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(ingestApiKeyFilter, AuthorizationFilter.class);
 
         return http.build();
     }
