@@ -124,12 +124,17 @@ public class OtpService {
             Instant lastSend = history.get(history.size() - 1);
             long secondsSinceLast = ChronoUnit.SECONDS.between(lastSend, now);
             if (secondsSinceLast < 60) {
-                throw new IllegalStateException("Please wait at least 60 seconds before requesting a new code");
+                long retryAfter = 60 - secondsSinceLast;
+                throw new com.disaster.exception.RateLimitException(
+                        "Please wait at least 60 seconds before requesting a new code", retryAfter);
             }
         }
 
         if (history.size() >= 5) {
-            throw new IllegalStateException("Maximum 5 OTP requests per hour exceeded. Please try again later");
+            long secondsSinceOldest = ChronoUnit.SECONDS.between(history.get(0), now);
+            long retryAfter = Math.max(1, 3600 - secondsSinceOldest);
+            throw new com.disaster.exception.RateLimitException(
+                    "Maximum 5 OTP requests per hour exceeded. Please try again later", retryAfter);
         }
     }
 

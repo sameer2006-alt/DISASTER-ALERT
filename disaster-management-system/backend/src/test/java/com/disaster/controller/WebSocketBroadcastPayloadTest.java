@@ -1,10 +1,14 @@
 package com.disaster.controller;
 
+import com.disaster.dto.CreateRescueRequest;
+import com.disaster.dto.CreateShelterRequest;
+import com.disaster.dto.CreateVolunteerRequest;
+import com.disaster.dto.RescueStatusUpdateRequest;
 import com.disaster.dto.RescueView;
 import com.disaster.dto.ShelterView;
 import com.disaster.dto.VolunteerOrgView;
+import com.disaster.dto.VolunteerStatusUpdateRequest;
 import com.disaster.dto.VolunteerView;
-import com.disaster.model.GeoLocation;
 import com.disaster.model.RescueRequest;
 import com.disaster.model.Shelter;
 import com.disaster.model.Volunteer;
@@ -75,9 +79,7 @@ public class WebSocketBroadcastPayloadTest {
     @Test
     @DisplayName("VolunteerController.create() returns VolunteerOrgView (with phone) but broadcasts VolunteerView (without phone)")
     void testVolunteerCreateBroadcastPayload() throws Exception {
-        Volunteer input = Volunteer.builder()
-                .id("vol-123")
-                .userId("internal-user-abc")
+        CreateVolunteerRequest request = CreateVolunteerRequest.builder()
                 .name("Alex Rivers")
                 .contact("+919876543210")
                 .role("Medical Specialist")
@@ -88,9 +90,12 @@ public class WebSocketBroadcastPayloadTest {
                 .longitude(72.8777)
                 .build();
 
-        when(volunteerRepository.save(any(Volunteer.class))).thenReturn(input);
+        Volunteer saved = request.toEntity();
+        saved.setId("vol-123");
 
-        ResponseEntity<VolunteerOrgView> response = volunteerController.create(input);
+        when(volunteerRepository.save(any(Volunteer.class))).thenReturn(saved);
+
+        ResponseEntity<VolunteerOrgView> response = volunteerController.create(request);
 
         // 1. Authenticated REST response must be VolunteerOrgView and contain contact phone number
         assertNotNull(response.getBody());
@@ -134,7 +139,7 @@ public class WebSocketBroadcastPayloadTest {
         when(volunteerRepository.findById("vol-456")).thenReturn(Optional.of(existing));
         when(volunteerRepository.save(any(Volunteer.class))).thenReturn(existing);
 
-        VolunteerController.StatusUpdate update = new VolunteerController.StatusUpdate(Volunteer.VolunteerStatus.ON_MISSION);
+        VolunteerStatusUpdateRequest update = new VolunteerStatusUpdateRequest(Volunteer.VolunteerStatus.ON_MISSION);
         ResponseEntity<VolunteerOrgView> response = volunteerController.updateStatus("vol-456", update);
 
         // 1. Authenticated REST response must contain contact phone
@@ -155,8 +160,7 @@ public class WebSocketBroadcastPayloadTest {
     @Test
     @DisplayName("ShelterController.create() broadcasts ShelterView without internal passwords or sensitive data")
     void testShelterBroadcastPayload() throws Exception {
-        Shelter shelter = Shelter.builder()
-                .id("shelter-10")
+        CreateShelterRequest request = CreateShelterRequest.builder()
                 .name("Community Shelter East")
                 .organisationId("org-50")
                 .capacity(200)
@@ -169,9 +173,12 @@ public class WebSocketBroadcastPayloadTest {
                 .status(Shelter.ShelterStatus.ACTIVE)
                 .build();
 
-        when(shelterRepository.save(any(Shelter.class))).thenReturn(shelter);
+        Shelter saved = request.toEntity();
+        saved.setId("shelter-10");
 
-        ResponseEntity<ShelterView> response = shelterController.create(shelter);
+        when(shelterRepository.save(any(Shelter.class))).thenReturn(saved);
+
+        ResponseEntity<ShelterView> response = shelterController.create(request);
         assertNotNull(response.getBody());
         assertInstanceOf(ShelterView.class, response.getBody());
 
@@ -187,19 +194,19 @@ public class WebSocketBroadcastPayloadTest {
     @Test
     @DisplayName("RescueController.create() broadcasts RescueView without user ID")
     void testRescueBroadcastPayload() throws Exception {
-        RescueRequest req = RescueRequest.builder()
-                .id("rescue-100")
-                .userId("sensitive-citizen-user-id")
+        CreateRescueRequest request = CreateRescueRequest.builder()
                 .description("Stranded by rising flood waters")
                 .priority("HIGH")
                 .latitude(19.076)
                 .longitude(72.877)
-                .status(RescueRequest.RescueStatus.PENDING)
                 .build();
 
-        when(rescueRepository.save(any(RescueRequest.class))).thenReturn(req);
+        RescueRequest saved = request.toEntity();
+        saved.setId("rescue-100");
 
-        ResponseEntity<RescueView> response = rescueController.create(req);
+        when(rescueRepository.save(any(RescueRequest.class))).thenReturn(saved);
+
+        ResponseEntity<RescueView> response = rescueController.create(request);
         assertNotNull(response.getBody());
         assertInstanceOf(RescueView.class, response.getBody());
 

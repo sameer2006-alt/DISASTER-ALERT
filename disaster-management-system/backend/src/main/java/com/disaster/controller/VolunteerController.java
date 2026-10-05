@@ -1,9 +1,12 @@
 package com.disaster.controller;
 
+import com.disaster.dto.CreateVolunteerRequest;
 import com.disaster.dto.VolunteerOrgView;
+import com.disaster.dto.VolunteerStatusUpdateRequest;
 import com.disaster.dto.VolunteerView;
 import com.disaster.model.Volunteer;
 import com.disaster.repository.VolunteerRepository;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -28,11 +31,8 @@ public class VolunteerController {
     }
 
     @PostMapping
-    public ResponseEntity<VolunteerOrgView> create(@RequestBody Volunteer volunteer) {
-        volunteer.syncGeo();
-        if (volunteer.getStatus() == null) {
-            volunteer.setStatus(Volunteer.VolunteerStatus.AVAILABLE);
-        }
+    public ResponseEntity<VolunteerOrgView> create(@Valid @RequestBody CreateVolunteerRequest request) {
+        Volunteer volunteer = request.toEntity();
         Volunteer saved = volunteerRepository.save(volunteer);
         VolunteerView publicView = VolunteerView.from(saved);
         try {
@@ -42,12 +42,12 @@ public class VolunteerController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<VolunteerOrgView> updateStatus(@PathVariable String id, @RequestBody StatusUpdate update) {
+    public ResponseEntity<VolunteerOrgView> updateStatus(
+            @PathVariable String id,
+            @Valid @RequestBody VolunteerStatusUpdateRequest update) {
         Volunteer volunteer = volunteerRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Volunteer not found"));
-        if (update.status() != null) {
-            volunteer.setStatus(update.status());
-        }
+        volunteer.setStatus(update.status());
         Volunteer saved = volunteerRepository.save(volunteer);
         VolunteerView publicView = VolunteerView.from(saved);
         try {
@@ -55,7 +55,5 @@ public class VolunteerController {
         } catch (Exception ignored) {}
         return ResponseEntity.ok(VolunteerOrgView.from(saved));
     }
-
-    public record StatusUpdate(Volunteer.VolunteerStatus status) {}
 }
 

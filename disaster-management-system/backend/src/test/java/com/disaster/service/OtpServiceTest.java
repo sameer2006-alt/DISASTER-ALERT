@@ -201,9 +201,10 @@ class OtpServiceTest {
         assertNotNull(otpService.generateAndStore(TEST_EMAIL, PURPOSE, null));
 
         // Immediate second send fails
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+        com.disaster.exception.RateLimitException ex = assertThrows(com.disaster.exception.RateLimitException.class, () ->
                 otpService.generateAndStore(TEST_EMAIL, PURPOSE, null));
         assertTrue(ex.getMessage().contains("Please wait at least 60 seconds"));
+        assertTrue(ex.getRetryAfterSeconds() > 0);
     }
 
     @Test
@@ -228,9 +229,10 @@ class OtpServiceTest {
         }
 
         // 6th send within the hour window must be rejected
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+        com.disaster.exception.RateLimitException ex = assertThrows(com.disaster.exception.RateLimitException.class, () ->
                 otpService.generateAndStore(TEST_EMAIL, PURPOSE, null));
         assertTrue(ex.getMessage().contains("Maximum 5 OTP requests per hour exceeded"));
+        assertTrue(ex.getRetryAfterSeconds() > 0);
     }
 
     @Test

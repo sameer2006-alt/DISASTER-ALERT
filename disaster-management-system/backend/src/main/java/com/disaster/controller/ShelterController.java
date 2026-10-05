@@ -1,8 +1,11 @@
 package com.disaster.controller;
 
+import com.disaster.dto.CreateShelterRequest;
+import com.disaster.dto.OccupancyUpdateRequest;
 import com.disaster.dto.ShelterView;
 import com.disaster.model.Shelter;
 import com.disaster.repository.ShelterRepository;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -27,9 +30,8 @@ public class ShelterController {
     }
 
     @PostMapping
-    public ResponseEntity<ShelterView> create(@RequestBody Shelter shelter) {
-        shelter.syncGeo();
-        if (shelter.getStatus() == null) shelter.setStatus(Shelter.ShelterStatus.INACTIVE);
+    public ResponseEntity<ShelterView> create(@Valid @RequestBody CreateShelterRequest request) {
+        Shelter shelter = request.toEntity();
         Shelter saved = shelterRepository.save(shelter);
         ShelterView view = ShelterView.from(saved);
         messagingTemplate.convertAndSend("/topic/shelters", view);
@@ -37,7 +39,9 @@ public class ShelterController {
     }
 
     @PatchMapping("/{id}/occupancy")
-    public ResponseEntity<ShelterView> updateOccupancy(@PathVariable String id, @RequestBody OccupancyUpdate update) {
+    public ResponseEntity<ShelterView> updateOccupancy(
+            @PathVariable String id,
+            @Valid @RequestBody OccupancyUpdateRequest update) {
         Shelter shelter = shelterRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Shelter not found"));
         shelter.setAvailableBeds(update.availableBeds());
@@ -49,6 +53,4 @@ public class ShelterController {
         messagingTemplate.convertAndSend("/topic/shelters", view);
         return ResponseEntity.ok(view);
     }
-
-    public record OccupancyUpdate(int availableBeds) {}
 }

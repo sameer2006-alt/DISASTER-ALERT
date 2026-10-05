@@ -62,5 +62,12 @@ app:
     phone-number: ${TWILIO_PHONE_NUMBER:}
   ingest:
     api-key: ${INGEST_API_KEY:}
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    auth:
+      max-requests-per-minute-ip: ${RATE_LIMIT_AUTH_IP:5}
+      max-requests-per-minute-email: ${RATE_LIMIT_AUTH_EMAIL:5}
+    rescue:
+      max-requests-per-minute-ip: ${RATE_LIMIT_RESCUE_IP:5}
   integrations:
     auto-ingest: ${AUTO_INGEST:false}

@@ -108,10 +108,10 @@ public class AuthService {
     public AuthResponse login(String username, String password) {
         User user = userRepository.findByUsername(username)
                 .orElseGet(() -> userRepository.findByEmail(username)
-                        .orElseThrow(() -> new IllegalArgumentException("Invalid credentials")));
+                        .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Invalid credentials")));
         
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new IllegalArgumentException("Invalid credentials");
+            throw new org.springframework.security.authentication.BadCredentialsException("Invalid credentials");
         }
 
         if (!user.isVerified()) {

@@ -61,7 +61,9 @@ public class OrgAuthController {
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<Organisation> updateProfile(Authentication auth, @RequestBody Organisation updates) {
+    public ResponseEntity<Organisation> updateProfile(
+            Authentication auth,
+            @Valid @RequestBody com.disaster.dto.OrgProfileUpdateRequest updates) {
         return ResponseEntity.ok(orgAuthService.updateProfile(auth.getName(), updates));
     }
 

@@ -98,9 +98,9 @@ public class OrganisationAuthService {
     /** Organisation login validation — check credentials directly and return JWT (NO OTP flow) */
     public AuthResponse login(String email, String password) {
         Organisation org = organisationRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+                .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Invalid credentials"));
         if (!passwordEncoder.matches(password, org.getPassword())) {
-            throw new IllegalArgumentException("Invalid credentials");
+            throw new org.springframework.security.authentication.BadCredentialsException("Invalid credentials");
         }
 
         if (!org.isVerified()) {
@@ -140,16 +140,27 @@ public class OrganisationAuthService {
         throw new UnsupportedOperationException("Login 2FA OTP is deprecated");
     }
 
-    public Organisation updateProfile(String email, Organisation updates) {
+    public Organisation updateProfile(String email, com.disaster.dto.OrgProfileUpdateRequest updates) {
         Organisation org = organisationRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Organisation not found"));
-        if (updates.getDescription() != null) org.setDescription(updates.getDescription());
-        if (updates.getLogoUrl() != null) org.setLogoUrl(updates.getLogoUrl());
-        if (updates.getSupportTypes() != null) org.setSupportTypes(updates.getSupportTypes());
-        if (updates.getResourcesAvailable() != null) org.setResourcesAvailable(updates.getResourcesAvailable());
-        if (updates.getShelterCapacity() > 0) org.setShelterCapacity(updates.getShelterCapacity());
-        if (updates.getContactNumber() != null) org.setContactNumber(updates.getContactNumber());
-        if (updates.getWebsite() != null) org.setWebsite(updates.getWebsite());
+        if (updates.organisationName() != null && !updates.organisationName().isBlank()) org.setOrganisationName(updates.organisationName());
+        if (updates.description() != null) org.setDescription(updates.description());
+        if (updates.logoUrl() != null) org.setLogoUrl(updates.logoUrl());
+        if (updates.country() != null) org.setCountry(updates.country());
+        if (updates.state() != null) org.setState(updates.state());
+        if (updates.city() != null) org.setCity(updates.city());
+        if (updates.headquartersLocation() != null) org.setHeadquartersLocation(updates.headquartersLocation());
+        if (updates.operatingLocations() != null) org.setOperatingLocations(updates.operatingLocations());
+        if (updates.supportTypes() != null) org.setSupportTypes(updates.supportTypes());
+        if (updates.resourcesAvailable() != null) org.setResourcesAvailable(updates.resourcesAvailable());
+        if (updates.shelterCapacity() != null && updates.shelterCapacity() >= 0) org.setShelterCapacity(updates.shelterCapacity());
+        if (updates.foodCapacity() != null && updates.foodCapacity() >= 0) org.setFoodCapacity(updates.foodCapacity());
+        if (updates.medicalCapacity() != null && updates.medicalCapacity() >= 0) org.setMedicalCapacity(updates.medicalCapacity());
+        if (updates.activeStatus() != null) org.setActiveStatus(updates.activeStatus());
+        if (updates.latitude() != null) org.setLatitude(updates.latitude());
+        if (updates.longitude() != null) org.setLongitude(updates.longitude());
+        if (updates.contactNumber() != null) org.setContactNumber(updates.contactNumber());
+        if (updates.website() != null) org.setWebsite(updates.website());
         org.syncGeo();
         return organisationRepository.save(org);
     }

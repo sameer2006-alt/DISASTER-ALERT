@@ -1,8 +1,11 @@
 package com.disaster.controller;
 
+import com.disaster.dto.CreateRescueRequest;
+import com.disaster.dto.RescueStatusUpdateRequest;
 import com.disaster.dto.RescueView;
 import com.disaster.model.RescueRequest;
 import com.disaster.repository.RescueRequestRepository;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -34,14 +37,9 @@ public class RescueController {
     }
 
     @PostMapping("/request")
-    public ResponseEntity<RescueView> create(@RequestBody RescueRequest request) {
-        if (request.getLatitude() == 0.0 || request.getLongitude() == 0.0) {
-            throw new IllegalArgumentException("Location required for SOS");
-        }
-        request.setStatus(RescueRequest.RescueStatus.PENDING);
-        request.setCreatedAt(Instant.now());
-        request.syncGeo();
-        RescueRequest saved = rescueRepository.save(request);
+    public ResponseEntity<RescueView> create(@Valid @RequestBody CreateRescueRequest request) {
+        RescueRequest entity = request.toEntity();
+        RescueRequest saved = rescueRepository.save(entity);
         RescueView view = RescueView.from(saved);
         messagingTemplate.convertAndSend("/topic/rescue", view);
         messagingTemplate.convertAndSend("/topic/rescue-requests", view);
@@ -96,7 +94,7 @@ public class RescueController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<RescueView> updateStatus(
             @PathVariable String id,
-            @RequestBody StatusUpdate update) {
+            @Valid @RequestBody RescueStatusUpdateRequest update) {
         RescueRequest req = rescueRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Request not found"));
         req.setStatus(update.status());
@@ -105,6 +103,4 @@ public class RescueController {
         messagingTemplate.convertAndSend("/topic/rescue", view);
         return ResponseEntity.ok(view);
     }
-
-    public record StatusUpdate(RescueRequest.RescueStatus status) {}
 }
