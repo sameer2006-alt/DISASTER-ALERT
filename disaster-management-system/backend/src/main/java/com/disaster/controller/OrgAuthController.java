@@ -4,6 +4,8 @@ import com.disaster.dto.AuthResponse;
 import com.disaster.model.Organisation;
 import com.disaster.service.OrganisationAuthService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +30,8 @@ public class OrgAuthController {
         com.disaster.util.PasswordValidator.validate(req.password());
         var data = new OrganisationAuthService.OrgRegistrationData(
                 req.organisationName(), req.email(), req.password(),
-                req.country(), req.state(), req.city(), req.headquartersLocation());
+                req.country(), req.state(), req.city(), req.headquartersLocation(),
+                req.latitude(), req.longitude());
         return ResponseEntity.ok(orgAuthService.register(data));
     }
 
@@ -72,7 +75,13 @@ public class OrgAuthController {
             @Email String email,
             @NotBlank String password,
             @NotBlank String confirmPassword,
-            String country, String state, String city, String headquartersLocation) {}
+            String country, String state, String city, String headquartersLocation,
+            @DecimalMin(value = "-90.0", message = "latitude must be between -90 and 90")
+            @DecimalMax(value = "90.0", message = "latitude must be between -90 and 90")
+            Double latitude,
+            @DecimalMin(value = "-180.0", message = "longitude must be between -180 and 180")
+            @DecimalMax(value = "180.0", message = "longitude must be between -180 and 180")
+            Double longitude) {}
 
     public record OrgLoginRequest(@Email String email, @NotBlank String password) {}
 

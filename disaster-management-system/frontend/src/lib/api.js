@@ -30,6 +30,10 @@ export const orgApi = {
   updateProfile: (data) => api.put('/api/org/profile', data),
 }
 
+export const userApi = {
+  updateLocation: (data) => api.put('/api/users/me/location', data),
+}
+
 export const eventsApi = {
   active: () => api.get('/api/events/active'),
   simulate: (data) => api.post('/api/events/simulate', data),

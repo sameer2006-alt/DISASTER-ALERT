@@ -3,6 +3,8 @@ package com.disaster.controller;
 import com.disaster.dto.AuthResponse;
 import com.disaster.service.AuthService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +28,8 @@ public class AuthController {
         com.disaster.util.PasswordValidator.validate(req.password());
         var data = new AuthService.UserRegistrationData(
                 req.username(), req.email(), req.password(),
-                req.location(), req.state(), req.city());
+                req.location(), req.state(), req.city(),
+                req.latitude(), req.longitude());
         return ResponseEntity.ok(authService.register(data));
     }
 
@@ -56,7 +59,13 @@ public class AuthController {
             @NotBlank String confirmPassword,
             String location,
             String state,
-            String city) {}
+            String city,
+            @DecimalMin(value = "-90.0", message = "latitude must be between -90 and 90")
+            @DecimalMax(value = "90.0", message = "latitude must be between -90 and 90")
+            Double latitude,
+            @DecimalMin(value = "-180.0", message = "longitude must be between -180 and 180")
+            @DecimalMax(value = "180.0", message = "longitude must be between -180 and 180")
+            Double longitude) {}
 
     public record LoginRequest(@NotBlank String username, @NotBlank String password) {}
 

@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { orgApi } from '../lib/api'
 import Navbar from '../components/Navbar'
 import PasswordField, { checkPasswordRequirements } from '../components/PasswordField'
-import { Eye, EyeOff, Check, X, Mail } from 'lucide-react'
+import LocationSelector from '../components/LocationSelector'
+import { Eye, EyeOff, Check, X, Mail, Navigation } from 'lucide-react'
+import { getLocationCoordinates } from '../data/indianLocations'
 
 export default function OrgSignup() {
   const navigate = useNavigate()
@@ -17,6 +19,38 @@ export default function OrgSignup() {
   const [resendTimer, setResendTimer] = useState(0)
   const [resendLoading, setResendLoading] = useState(false)
   const [resendMessage, setResendMessage] = useState('')
+  const [locationState, setLocationState] = useState({
+    state: '',
+    city: '',
+    location: '',
+  })
+  const [coords, setCoords] = useState(null)
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [geoStatus, setGeoStatus] = useState('idle')
+
+  const requestGeolocation = () => {
+    if (!navigator.geolocation) {
+      setGeoStatus('unsupported')
+      return
+    }
+    setGeoLoading(true)
+    setGeoStatus('detecting')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        })
+        setGeoStatus('granted')
+        setGeoLoading(false)
+      },
+      () => {
+        setGeoStatus('denied')
+        setGeoLoading(false)
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    )
+  }
 
   // 30-second countdown timer for Resend OTP
   useEffect(() => {
@@ -96,6 +130,39 @@ export default function OrgSignup() {
       setError('Passwords do not match.')
       setLoading(false)
       return
+    }
+
+    data.country = data.country || 'India'
+    data.state = locationState.state || data.state
+    data.city = locationState.city || data.city
+    data.headquartersLocation = locationState.location || data.headquartersLocation || data.city
+
+    if (!data.state) {
+      setError('Please select your organisation state.')
+      setLoading(false)
+      return
+    }
+    if (!data.city) {
+      setError('Please select your organisation city.')
+      setLoading(false)
+      return
+    }
+    if (!data.headquartersLocation) {
+      setError('Please select or specify headquarters location / neighborhood.')
+      setLoading(false)
+      return
+    }
+
+    // Geolocation / coordinate assignment
+    if (coords) {
+      data.latitude = coords.latitude
+      data.longitude = coords.longitude
+    } else if (data.state && data.city) {
+      const fallback = getLocationCoordinates(data.state, data.city)
+      if (fallback) {
+        data.latitude = fallback.latitude
+        data.longitude = fallback.longitude
+      }
     }
 
     try {
@@ -280,45 +347,47 @@ export default function OrgSignup() {
             )}
           </div>
 
-          <div className="space-y-1">
-            <input
-              name="country"
-              type="text"
-              placeholder="Country"
-              className={inputClass}
-              required
-            />
+          <input type="hidden" name="country" value="India" />
+
+          {/* Optional Browser Geolocation with Visible Consent */}
+          <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                <Navigation className="w-3.5 h-3.5 text-accent-orange" />
+                Headquarters Geolocation (Optional)
+              </span>
+              <button
+                type="button"
+                onClick={requestGeolocation}
+                disabled={geoLoading}
+                className="text-xs px-2.5 py-1 rounded-lg bg-accent-orange/20 hover:bg-accent-orange/30 text-accent-orange border border-accent-orange/30 transition-all font-medium flex items-center gap-1"
+              >
+                {geoLoading ? 'Detecting...' : coords ? 'Re-detect GPS' : 'Detect GPS'}
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Your location is used only to send disaster alerts near you.
+            </p>
+            {coords && (
+              <p className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
+                <Check className="w-3 h-3" /> GPS locked ({coords.latitude.toFixed(4)}, {coords.longitude.toFixed(4)})
+              </p>
+            )}
+            {geoStatus === 'denied' && (
+              <p className="text-[11px] text-amber-400">
+                GPS access declined or unavailable. Your chosen city/state centroid will be used automatically.
+              </p>
+            )}
           </div>
 
-          <div className="space-y-1">
-            <input
-              name="state"
-              type="text"
-              placeholder="State"
-              className={inputClass}
-              required
-            />
-          </div>
-
-          <div className="space-y-1">
-            <input
-              name="city"
-              type="text"
-              placeholder="City"
-              className={inputClass}
-              required
-            />
-          </div>
-
-          <div className="space-y-1">
-            <input
-              name="headquartersLocation"
-              type="text"
-              placeholder="Headquarters Location"
-              className={inputClass}
-              required
-            />
-          </div>
+          {/* Interactive Indian States, Cities, and Localities Cascading Dropdowns */}
+          <LocationSelector
+            state={locationState.state}
+            city={locationState.city}
+            location={locationState.location}
+            onChange={(loc) => setLocationState(loc)}
+            required={true}
+          />
 
           {error && <p className="text-neon-red text-sm">{error}</p>}
           <button

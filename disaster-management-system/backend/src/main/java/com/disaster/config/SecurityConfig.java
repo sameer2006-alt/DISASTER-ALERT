@@ -119,6 +119,8 @@ public class SecurityConfig {
         .requestMatchers("/api/volunteers/**").hasAnyRole("ORGANISATION", "ADMIN")
         // Organisation profile management
         .requestMatchers("/api/org/profile").hasAnyRole("ORGANISATION", "ADMIN")
+        // Citizen user location profile updates
+        .requestMatchers(HttpMethod.PUT, "/api/users/me/location").hasAnyRole("CITIZEN", "ADMIN")
 
         // ── 5. Authenticated (CITIZEN, ORGANISATION, ADMIN) ───────────────────
         .requestMatchers("/api/climate/**").authenticated()

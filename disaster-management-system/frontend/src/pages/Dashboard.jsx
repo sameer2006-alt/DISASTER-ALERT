@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { eventsApi, shelterApi, simulateApi, sachetApi } from '../lib/api'
+import { eventsApi, shelterApi, simulateApi, sachetApi, userApi } from '../lib/api'
 import { createStompClient, subscribeAlerts, subscribeShelters } from '../lib/websocket'
 import UnifiedDisasterMap from '../components/map/UnifiedDisasterMap'
+import { MapPin } from 'lucide-react'
 
 const DEFAULT_CENTER = { lat: 19.076, lng: 72.8777 }
 
@@ -18,6 +19,40 @@ export default function Dashboard() {
   const [sachetEvents, setSachetEvents] = useState([])
   // userLocation used for SOS/simulate only — NOT passed to map to avoid auto-zoom
   const [userLocation, setUserLocation] = useState(DEFAULT_CENTER)
+  const [updatingLocation, setUpdatingLocation] = useState(false)
+  const [locationMsg, setLocationMsg] = useState('')
+
+  const handleUpdateLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationMsg('Geolocation not supported')
+      setTimeout(() => setLocationMsg(''), 4000)
+      return
+    }
+    setUpdatingLocation(true)
+    setLocationMsg('')
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude
+          const lng = pos.coords.longitude
+          await userApi.updateLocation({ latitude: lat, longitude: lng })
+          setUserLocation({ lat, lng })
+          setLocationMsg(`Location updated (${lat.toFixed(2)}, ${lng.toFixed(2)})`)
+        } catch (err) {
+          setLocationMsg(err.response?.data?.message || 'Failed to update location')
+        } finally {
+          setUpdatingLocation(false)
+          setTimeout(() => setLocationMsg(''), 4000)
+        }
+      },
+      () => {
+        setUpdatingLocation(false)
+        setLocationMsg('Location access denied')
+        setTimeout(() => setLocationMsg(''), 4000)
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    )
+  }
   
   const activeLocation = userLocation
   
@@ -209,6 +244,25 @@ export default function Dashboard() {
             Open Pipeline &rarr;
           </span>
         </Link>
+      </div>
+
+      {/* Floating User Location Update Control */}
+      <div className="absolute top-4 right-4 z-30 pointer-events-auto flex items-center gap-2">
+        {locationMsg && (
+          <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-cinematic-black/90 border border-emerald-500/40 text-emerald-300 backdrop-blur-md shadow-lg animate-in fade-in">
+            {locationMsg}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={handleUpdateLocation}
+          disabled={updatingLocation}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-full glass border border-white/15 text-xs font-medium text-slate-200 hover:text-white hover:border-accent-blue bg-cinematic-black/80 backdrop-blur-md shadow-lg transition-all hover:scale-105 disabled:opacity-50"
+          title="Update your location on server for localized alerts"
+        >
+          <MapPin className="w-3.5 h-3.5 text-accent-blue shrink-0" />
+          <span>{updatingLocation ? 'Updating...' : 'Update my location'}</span>
+        </button>
       </div>
 
       {/* center prop intentionally omitted — map opens at Pan India zoom-5 view */}

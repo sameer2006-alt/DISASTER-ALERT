@@ -4,7 +4,8 @@ import { authApi } from '../lib/api'
 import Navbar from '../components/Navbar'
 import PasswordField, { checkPasswordRequirements } from '../components/PasswordField'
 import LocationSelector from '../components/LocationSelector'
-import { Eye, EyeOff, Check, X, Mail } from 'lucide-react'
+import { Eye, EyeOff, Check, X, Mail, Navigation } from 'lucide-react'
+import { getLocationCoordinates } from '../data/indianLocations'
 
 export default function Signup() {
   const navigate = useNavigate()
@@ -23,6 +24,33 @@ export default function Signup() {
     city: '',
     location: '',
   })
+  const [coords, setCoords] = useState(null)
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [geoStatus, setGeoStatus] = useState('idle')
+
+  const requestGeolocation = () => {
+    if (!navigator.geolocation) {
+      setGeoStatus('unsupported')
+      return
+    }
+    setGeoLoading(true)
+    setGeoStatus('detecting')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        })
+        setGeoStatus('granted')
+        setGeoLoading(false)
+      },
+      () => {
+        setGeoStatus('denied')
+        setGeoLoading(false)
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    )
+  }
 
   // 30-second countdown timer for Resend OTP
   useEffect(() => {
@@ -121,6 +149,18 @@ export default function Signup() {
       setError('Please select or enter your locality / neighborhood.')
       setLoading(false)
       return
+    }
+
+    // Geolocation / coordinate assignment
+    if (coords) {
+      data.latitude = coords.latitude
+      data.longitude = coords.longitude
+    } else if (data.state && data.city) {
+      const fallback = getLocationCoordinates(data.state, data.city)
+      if (fallback) {
+        data.latitude = fallback.latitude
+        data.longitude = fallback.longitude
+      }
     }
 
     try {
@@ -302,6 +342,37 @@ export default function Signup() {
                   </span>
                 )}
               </div>
+            )}
+          </div>
+
+          {/* Optional Browser Geolocation with Visible Consent */}
+          <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                <Navigation className="w-3.5 h-3.5 text-accent-blue" />
+                Precise Geolocation (Optional)
+              </span>
+              <button
+                type="button"
+                onClick={requestGeolocation}
+                disabled={geoLoading}
+                className="text-xs px-2.5 py-1 rounded-lg bg-accent-blue/20 hover:bg-accent-blue/30 text-accent-blue border border-accent-blue/30 transition-all font-medium flex items-center gap-1"
+              >
+                {geoLoading ? 'Detecting...' : coords ? 'Re-detect GPS' : 'Detect GPS'}
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Your location is used only to send disaster alerts near you.
+            </p>
+            {coords && (
+              <p className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
+                <Check className="w-3 h-3" /> GPS locked ({coords.latitude.toFixed(4)}, {coords.longitude.toFixed(4)})
+              </p>
+            )}
+            {geoStatus === 'denied' && (
+              <p className="text-[11px] text-amber-400">
+                GPS access declined or unavailable. Your chosen city/state centroid will be used automatically.
+              </p>
             )}
           </div>
 

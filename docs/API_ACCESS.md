@@ -49,6 +49,7 @@ The system uses JWTs (JSON Web Tokens) with standard HMAC-SHA256 signatures.
 | **PATCH**| `/api/shelters/**` | **ORGANISATION or ADMIN** | Update shelter capacity, occupancy, and status |
 | **ALL** | `/api/volunteers/**` | **ORGANISATION or ADMIN** | Register responders, list volunteers, update status |
 | **PUT** | `/api/org/profile` | **ORGANISATION or ADMIN** | Update authenticated organisation profile details |
+| **PUT** | `/api/users/me/location` | **CITIZEN or ADMIN** | Update authenticated user GPS coordinates and region |
 | **ALL** | `/api/climate/**` | **Authenticated** | Climate intelligence, satellite indices, weather risk |
 | **ALL** | `/api/ai/**` | **Authenticated** | AI-driven threat analysis and damage evaluation |
 | **ALL** | `/api/verification/**` (read/stream) | **Authenticated** | Verification pipeline monitoring, metrics, and streams |

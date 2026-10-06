@@ -16,11 +16,14 @@ import java.util.Map;
 @Service
 public class AuthService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthService.class);
+
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final OtpService otpService;
     private final EmailService emailService;
+    private final GeoLocationLookupService geoLocationLookupService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public AuthService(
@@ -28,12 +31,14 @@ public class AuthService {
             JwtService jwtService,
             PasswordEncoder passwordEncoder,
             OtpService otpService,
-            EmailService emailService) {
+            EmailService emailService,
+            GeoLocationLookupService geoLocationLookupService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.otpService = otpService;
         this.emailService = emailService;
+        this.geoLocationLookupService = geoLocationLookupService;
     }
 
     public AuthResponse register(UserRegistrationData data) {
@@ -54,6 +59,24 @@ public class AuthService {
             userRepository.delete(existingUserByUsername);
         }
 
+        double lat;
+        double lon;
+        if (data.latitude() != null && data.longitude() != null) {
+            lat = data.latitude();
+            lon = data.longitude();
+        } else {
+            var coordsOpt = geoLocationLookupService.lookup(data.city(), data.state());
+            if (coordsOpt.isPresent()) {
+                lat = coordsOpt.get().latitude();
+                lon = coordsOpt.get().longitude();
+            } else {
+                log.warn("Unknown location for user registration: city='{}', state='{}'. Falling back to India centre.",
+                        data.city(), data.state());
+                lat = GeoLocationLookupService.INDIA_CENTRE.latitude();
+                lon = GeoLocationLookupService.INDIA_CENTRE.longitude();
+            }
+        }
+
         User user = User.builder()
                 .username(data.username())
                 .email(data.email())
@@ -63,8 +86,8 @@ public class AuthService {
                 .city(data.city())
                 .role(UserRole.CITIZEN)
                 .verified(false)
-                .latitude(20.5937)
-                .longitude(78.9629)
+                .latitude(lat)
+                .longitude(lon)
                 .createdAt(Instant.now())
                 .build();
         user.syncGeo();
@@ -153,5 +176,11 @@ public class AuthService {
 
     public record UserRegistrationData(
             String username, String email, String password,
-            String location, String state, String city) {}
+            String location, String state, String city,
+            Double latitude, Double longitude) {
+        public UserRegistrationData(String username, String email, String password,
+                                    String location, String state, String city) {
+            this(username, email, password, location, state, city, null, null);
+        }
+    }
 }

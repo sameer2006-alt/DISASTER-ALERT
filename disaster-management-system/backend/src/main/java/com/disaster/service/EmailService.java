@@ -83,8 +83,16 @@ public class EmailService {
 
         String text = "Your Smart Disaster Alert verification code is: " + otp + "\n\nThis code expires in 5 minutes.\n\nIf you did not request this, please ignore this email.";
 
-        deliverSync(to, subject, text, html);
-        log.info("OTP email delivered to {}", to);
+        try {
+            deliverSync(to, subject, text, html);
+            log.info("OTP email delivered to {}", to);
+        } catch (EmailDeliveryException e) {
+            if (isDevProfile()) {
+                log.warn("⚠️ [DEV ONLY] Mail delivery failed or not configured ({}). Continuing registration in dev profile.", e.getMessage());
+            } else {
+                throw e;
+            }
+        }
     }
 
     @Async

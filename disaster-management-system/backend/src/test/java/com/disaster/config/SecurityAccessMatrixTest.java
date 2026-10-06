@@ -17,6 +17,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
@@ -26,6 +27,7 @@ import java.util.Map;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -100,6 +102,11 @@ class SecurityAccessMatrixTest {
         @GetMapping("/api/ai/threat-analysis")
         public Map<String, String> aiAnalysis() {
             return Map.of("status", "THREAT_ANALYSIS_OK");
+        }
+
+        @PutMapping("/api/users/me/location")
+        public Map<String, String> userLocationUpdate() {
+            return Map.of("status", "LOCATION_UPDATE_OK");
         }
     }
 
@@ -392,6 +399,59 @@ class SecurityAccessMatrixTest {
                             .header("Authorization", "Bearer " + ADMIN_TOKEN))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("THREAT_ANALYSIS_OK"));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Row 5b: PUT /api/users/me/location (CITIZEN or ADMIN allowed)
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("Row 5b: Citizen user location update (PUT /api/users/me/location)")
+    class UserLocationSecurityTests {
+
+        @Test
+        @DisplayName("Anonymous to PUT /api/users/me/location returns 401 Unauthorized")
+        void anonymousToUserLocationReturns401() throws Exception {
+            mockMvc.perform(put("/api/users/me/location")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"latitude\": 22.7, \"longitude\": 75.9}"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.status").value(401))
+                    .andExpect(jsonPath("$.error").value("Unauthorized"));
+        }
+
+        @Test
+        @DisplayName("Citizen to PUT /api/users/me/location returns 200 OK")
+        void citizenToUserLocationReturns200() throws Exception {
+            mockMvc.perform(put("/api/users/me/location")
+                            .header("Authorization", "Bearer " + CITIZEN_TOKEN)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"latitude\": 22.7, \"longitude\": 75.9}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("LOCATION_UPDATE_OK"));
+        }
+
+        @Test
+        @DisplayName("Admin to PUT /api/users/me/location returns 200 OK")
+        void adminToUserLocationReturns200() throws Exception {
+            mockMvc.perform(put("/api/users/me/location")
+                            .header("Authorization", "Bearer " + ADMIN_TOKEN)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"latitude\": 22.7, \"longitude\": 75.9}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("LOCATION_UPDATE_OK"));
+        }
+
+        @Test
+        @DisplayName("Organisation to PUT /api/users/me/location returns 403 Forbidden")
+        void orgToUserLocationReturns403() throws Exception {
+            mockMvc.perform(put("/api/users/me/location")
+                            .header("Authorization", "Bearer " + ORG_TOKEN)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"latitude\": 22.7, \"longitude\": 75.9}"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.status").value(403))
+                    .andExpect(jsonPath("$.error").value("Forbidden"));
         }
     }
 

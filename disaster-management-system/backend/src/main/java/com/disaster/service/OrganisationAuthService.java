@@ -15,11 +15,14 @@ import java.util.Map;
 @Service
 public class OrganisationAuthService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OrganisationAuthService.class);
+
     private final OrganisationRepository organisationRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final OtpService otpService;
     private final EmailService emailService;
+    private final GeoLocationLookupService geoLocationLookupService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public OrganisationAuthService(
@@ -27,12 +30,14 @@ public class OrganisationAuthService {
             JwtService jwtService,
             PasswordEncoder passwordEncoder,
             OtpService otpService,
-            EmailService emailService) {
+            EmailService emailService,
+            GeoLocationLookupService geoLocationLookupService) {
         this.organisationRepository = organisationRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.otpService = otpService;
         this.emailService = emailService;
+        this.geoLocationLookupService = geoLocationLookupService;
     }
 
     public AuthResponse register(OrgRegistrationData data) {
@@ -42,6 +47,24 @@ public class OrganisationAuthService {
                 throw new com.disaster.exception.ConflictException("Email already registered. Please log in.");
             }
             organisationRepository.delete(existingOrgByEmail);
+        }
+
+        double lat;
+        double lon;
+        if (data.latitude() != null && data.longitude() != null) {
+            lat = data.latitude();
+            lon = data.longitude();
+        } else {
+            var coordsOpt = geoLocationLookupService.lookup(data.city(), data.state());
+            if (coordsOpt.isPresent()) {
+                lat = coordsOpt.get().latitude();
+                lon = coordsOpt.get().longitude();
+            } else {
+                log.warn("Unknown location for organisation registration: city='{}', state='{}'. Falling back to India centre.",
+                        data.city(), data.state());
+                lat = GeoLocationLookupService.INDIA_CENTRE.latitude();
+                lon = GeoLocationLookupService.INDIA_CENTRE.longitude();
+            }
         }
 
         Organisation org = Organisation.builder()
@@ -54,8 +77,8 @@ public class OrganisationAuthService {
                 .headquartersLocation(data.headquartersLocation())
                 .verified(false)
                 .activeStatus(true)
-                .latitude(20.5937)
-                .longitude(78.9629)
+                .latitude(lat)
+                .longitude(lon)
                 .createdAt(Instant.now())
                 .build();
         org.syncGeo();
@@ -167,5 +190,11 @@ public class OrganisationAuthService {
 
     public record OrgRegistrationData(
             String organisationName, String email, String password,
-            String country, String state, String city, String headquartersLocation) {}
+            String country, String state, String city, String headquartersLocation,
+            Double latitude, Double longitude) {
+        public OrgRegistrationData(String organisationName, String email, String password,
+                                   String country, String state, String city, String headquartersLocation) {
+            this(organisationName, email, password, country, state, city, headquartersLocation, null, null);
+        }
+    }
 }

@@ -98,27 +98,8 @@ public class DisasterService {
         String nearestShelterName = nearbyShelters.isEmpty() ? "Check platform maps for safe shelters" : nearbyShelters.get(0).getName();
 
         // 2. Identify citizens in the area and send email alerts
-        List<User> nearbyUsers = new java.util.ArrayList<>(userRepository.findUsersWithinRadius(
-                savedEvent.getLongitude(), savedEvent.getLatitude(), radiusInMeters));
-        
-        // Add fallback users matching state/city if they don't have geo coordinates set
-        String eventLocation = savedEvent.getLocation() != null ? savedEvent.getLocation().toLowerCase() : "";
-        List<User> allUsers = userRepository.findAll();
-        for (User user : allUsers) {
-            // Check if user is not already in nearbyUsers to avoid duplicates
-            if (nearbyUsers.stream().noneMatch(u -> u.getId().equals(user.getId()))) {
-                // Check if user has no valid coordinates (latitude == 0.0 && longitude == 0.0)
-                if (user.getLatitude() == 0.0 && user.getLongitude() == 0.0) {
-                    boolean cityMatch = user.getCity() != null && !user.getCity().isEmpty() 
-                            && eventLocation.contains(user.getCity().toLowerCase());
-                    boolean stateMatch = user.getState() != null && !user.getState().isEmpty() 
-                            && eventLocation.contains(user.getState().toLowerCase());
-                    if (cityMatch || stateMatch) {
-                        nearbyUsers.add(user);
-                    }
-                }
-            }
-        }
+        List<User> nearbyUsers = userRepository.findUsersWithinRadius(
+                savedEvent.getLongitude(), savedEvent.getLatitude(), radiusInMeters);
 
         int affectedUserCount = 0;
         int emailsSent = 0;
